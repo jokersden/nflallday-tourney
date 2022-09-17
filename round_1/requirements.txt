@@ -1,0 +1,4 @@
+shroomdk
+plotly
+pandas
+numpy
