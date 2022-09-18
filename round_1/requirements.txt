@@ -2,3 +2,5 @@ shroomdk
 plotly
 pandas
 numpy
+nflfastpy 
+nfl_data_py

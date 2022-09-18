@@ -1,15 +1,21 @@
+import math
 import os
+
 from datetime import datetime
 import pandas as pd
 import numpy as np
 import streamlit as st
 
 from shroomdk import ShroomDK
+import nfl_data_py as nfl
 
 import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import plotly.io as pio
+
+from play_type import get_fig_moment_playtype
+from player import get_fig_player_total
 from videos import get_top_videos
 
 from week_data import meta_data
@@ -48,12 +54,31 @@ st.success("Please Note: All the dates and time are in US/New York time.", icon=
 
 @st.cache(allow_output_mutation=True, ttl=30 * 60, show_spinner=False)
 def load_data(data):
-    with st.spinner(f"Hey you!! {data['msg']}"):
-        return pd.DataFrame(
+
+    with st.spinner(f"Hey Hey!! {data['msg']}"):
+        page_count = pd.DataFrame(
             sdk.query(
                 f"""
     select 
-        date_trunc(hour, convert_timezone('UTC', 'America/New_York', block_timestamp::timestamp_ntz)) as hour, 
+        count(*) as pages
+    from flow.core.ez_nft_sales s
+        inner join flow.core.dim_allday_metadata m 
+            on m.nft_collection=s.nft_collection 
+            and m.nft_id=s.nft_id
+    where 
+        date_trunc(hour, convert_timezone('UTC', 'America/New_York', block_timestamp::timestamp_ntz))::date >= '{data["start_date"].strftime("%Y-%m-%d")}'
+        and date_trunc(hour, convert_timezone('UTC', 'America/New_York', block_timestamp::timestamp_ntz))::date <= '{data["end_date"].strftime("%Y-%m-%d")}' 
+        and TX_SUCCEEDED='TRUE'
+    """,
+            ).records
+        ).pages.values[0]
+
+        for i in range(math.ceil(page_count / 100_000)):
+            query_results = sdk.query(
+                f"""
+    select 
+        date_trunc(hour, convert_timezone('UTC', 'America/New_York', block_timestamp::timestamp_ntz)) as hour,
+        nflallday_id, 
         moment_tier, 
         player, 
         team, 
@@ -67,13 +92,13 @@ def load_data(data):
         MOMENT_STATS_FULL:metadata:playerBirthplace as birthplace,
         MOMENT_STATS_FULL:metadata:playerCollege as player_college,
         MOMENT_STATS_FULL:metadata:playerRookieYear as rookie_year,
+        MOMENT_STATS_FULL:metadata:playerID as player_id,
         MOMENT_STATS_FULL:id as video_id,
         replace(lower(set_name), ' ', '_') as set_name,
-        avg(price) as avg_price, 
-        sum(price) as total, 
-        count(distinct seller) as sellers,
-        count(distinct buyer) as buyers, 
-        count(distinct tx_id) as sales 
+        price, 
+        seller,
+        buyer, 
+        tx_id as sales 
     from flow.core.ez_nft_sales s
         inner join flow.core.dim_allday_metadata m 
             on m.nft_collection=s.nft_collection 
@@ -81,19 +106,33 @@ def load_data(data):
     where 
         hour::date >= '{data["start_date"].strftime("%Y-%m-%d")}'
         and hour::date <= '{data["end_date"].strftime("%Y-%m-%d")}' 
-        and TX_SUCCEEDED='TRUE'
-    group by hour, moment_tier, player, team, season, video_id, set_name,
-    week, play_type, player_position, moment_game_date, images, birthdate, 
-    birthplace, player_college, rookie_year 
-    order by hour
-    """
+        and TX_SUCCEEDED='TRUE' 
+    order by block_timestamp
+    """,
+                page_number=i + 1,
             ).records
-        )
+
+            if i == 0:
+                df_all = pd.DataFrame(query_results)
+            else:
+                df_all = pd.concat([df_all, pd.DataFrame(query_results)])
+
+    return pd.merge(
+        df_all,
+        nfl.clean_nfl_data(
+            pd.merge(
+                nfl.import_seasonal_data([2022]),
+                nfl.import_rosters([2022]),
+                on="player_id",
+            )
+        ),
+        on="player_id",
+    )
 
 
 col1, col2, col3 = st.columns(3)
 with col1:
-    week = st.selectbox("Please select a week", tuple(meta_data.keys()))
+    week = st.selectbox("Please select a week", tuple(meta_data.keys()), 1)
 
 col2.metric(
     f"{week} strated :", str(meta_data[week]["start_date"].strftime("%Y-%B-%d"))
@@ -112,4 +151,17 @@ else:
 
     st.subheader(f"This week's top selling fan favorite moments [{week}]")
     for i, l in enumerate(list(st.columns(5))):
-        l.video(df_vids[i])
+        l.video(df_vids[0].video_url.values[i])
+        l.markdown(
+            f"<span style='text-align: center; color: red;'>{df_vids[0].player.values[i]} - {df_vids[0].play_type.values[i]} in {df_vids[0].season.values[i]}</span>",
+            unsafe_allow_html=True,
+        )
+    st.markdown("---")
+    ch1, ch2 = st.columns(2)
+    ch1.plotly_chart(get_fig_moment_playtype(df_allday, week), use_container_width=True)
+    ch2.plotly_chart(
+        get_fig_player_total(df_allday, week),
+        use_container_width=True,
+    )
+    for i, im in enumerate(st.columns(5)):
+        im.image(list(df_allday.headshot_url.unique())[i])
