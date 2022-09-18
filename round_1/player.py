@@ -36,7 +36,7 @@ def get_fig_player_total(df, week):
     )
     fig_player_total.add_trace(go.Scatter(x=df_top20.player, y=df_top20.adj, name="Number of sales", meta=df_top20.sales, hovertemplate="<br>Number of sales: %{meta} </br><extra></extra>"))
     fig_player_total.update_xaxes(tickangle=35)
-    fig_player_total.update_layout(hovermode="x unified", legend=dict(yanchor="top", y=1, x=0))
+    fig_player_total.update_layout(hovermode="x unified", legend=dict(yanchor="top", y=1, x=0), paper_bgcolor='#121212')
     return fig_player_total
 
 # def getplayer_data():
