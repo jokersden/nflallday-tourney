@@ -11,8 +11,8 @@ import plotly.io as pio
 
 from play_type import get_fig_moment_playtype
 from play_player import get_fig_play_playtype, get_fig_player_percentage
-from player import get_fig_player_total, get_fig_playaer_stats
-from myutils import get_chart_markdown
+from player import get_fig_player_total, get_fig_playaer_stats, get_top5_players
+from myutils import get_chart_markdown, team_colors
 from play_player import get_fig_platype_percentage
 from videos import get_top_videos
 
@@ -44,7 +44,7 @@ hide_st_style = """
             header {visibility: hidden;}
             </style>
             """
-# st.markdown(hide_st_style, unsafe_allow_html=True)
+st.markdown(hide_st_style, unsafe_allow_html=True)
 
 
 st.success("Please Note: All the dates and time are in US/New York time.", icon="⏰")
@@ -52,7 +52,7 @@ st.success("Please Note: All the dates and time are in US/New York time.", icon=
 
 @st.cache(
     allow_output_mutation=True,
-    ttl=30 * 180,
+    ttl=30 * 60,
     show_spinner=False,
     suppress_st_warning=True,
 )
@@ -167,7 +167,7 @@ else:
     for i, l in enumerate(list(st.columns(5))):
         l.video(df_vids[0].video_url.values[i])
         l.markdown(
-            f"<span style='text-align: center; color: red;'>{df_vids[0].player.values[i]} - {df_vids[0].play_type.values[i]} in {df_vids[0].season.values[i]}</span>",
+            f"<div width=100% style='display: flex; justify-content:center; flex-direction:row;'><span style='text-align: center; color: red;'>{df_vids[0].player.values[i]} - {df_vids[0].play_type.values[i]} in {df_vids[0].season.values[i]}</span></div>",
             unsafe_allow_html=True,
         )
     st.markdown("---")
@@ -238,7 +238,44 @@ else:
     )
 
     st.write("")
-
+    st.markdown("---")
+    stat_names = {
+        "Rushing Yards": "rushing_yards",
+        "Passing Yards": "passing_yards",
+        "Completions": "completions",
+        "Attempts": "attempts",
+        "Receiving Yards": "receiving_yards",
+    }
+    st.subheader("Top 5 fan favorite players based on their moment sales")
+    fantasy_players, radars = get_top5_players(df_allday)
+    for i, im in enumerate(st.columns(5)):
+        im.image(list(fantasy_players.headshot_url.values)[i])
+        im.markdown(
+            f""" <div width=100% style='display: flex; justify-content:center; flex-direction:row;'>
+            <div>{list(fantasy_players.player.values)[i] + " - " }</div> 
+            <div style='color: {team_colors[list(fantasy_players.team.values)[i]]};'>{list(fantasy_players.team.values)[i]} </div> 
+            </div>
+            <div> </div>""",
+            unsafe_allow_html=True,
+        )
+        pl_vals = df_pt_pl[
+            df_pt_pl.player == fantasy_players.player.values[i]
+        ].nlargest(1, "pl_perc")[["play_type", "pl_perc", "total"]]
+        im.markdown(
+            f""" <div width=100% style='color: #0096c7; text-align: center; display: flex; justify-content:center; flex-direction:column;'>
+        <div width=100% style='text-align: center;'>His Most popular AllDay Play type:</div> 
+        <div width=100% style='text-align: center;'>{pl_vals.play_type.values[0]} - {round(pl_vals.pl_perc.values[0], 2)}%</div>
+        <div width=100% style='text-align: center;'>Total sold: ${pl_vals.total.values[0]}</div> 
+        </div>
+        """,
+            unsafe_allow_html=True,
+        )
+        im.plotly_chart(radars[i], use_container_width=True)
+    get_chart_markdown(
+        "Above radar charts per player shows their performances so far in this season, What percentile are their performances in, e.g: if somebosy has 0.9 for Passing Yards and 0.6 for Rushing Yards, that means that player is in the top 90% of the players so far in Passing Yards and in top 60% in Rushing Yards."
+    )
+    st.markdown("---")
+    st.write("")
     stat = st.selectbox(
         "Pick one that you want to see the top players for: ",
         [
@@ -249,17 +286,9 @@ else:
             "Receiving Yards",
         ],
     )
-    stat_names = {
-        "Rushing Yards": "rushing_yards",
-        "Passing Yards": "passing_yards",
-        "Completions": "completions",
-        "Attempts": "attempts",
-        "Receiving Yards": "receiving_yards",
-    }
-    for i, im in enumerate(st.columns(5)):
-        im.image(list(df_allday.headshot_url.unique())[i])
 
     st.plotly_chart(
         get_fig_playaer_stats(df_allday, stat_names[stat], stat, week),
         use_container_width=True,
     )
+    st.markdown("---")
