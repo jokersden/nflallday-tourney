@@ -130,7 +130,8 @@ def load_data(data):
                     df_all = pd.DataFrame(query_results)
                 else:
                     df_all = pd.concat([df_all, pd.DataFrame(query_results)])
-
+    if len(df_all) == 0:
+        return df_all
     return pd.merge(
         df_all,
         nfl.clean_nfl_data(
