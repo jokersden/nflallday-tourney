@@ -1,5 +1,3 @@
-import numpy as np
-
 import plotly.express as px
 import plotly.graph_objects as go
 
@@ -35,9 +33,21 @@ def get_fig_player_total(df, week):
         + "Average Price: $%{text:,.2f} <extra></extra>"
     )
     fig_player_total.add_trace(go.Scatter(x=df_top20.player, y=df_top20.adj, name="Number of sales", meta=df_top20.sales, hovertemplate="<br>Number of sales: %{meta} </br><extra></extra>"))
-    fig_player_total.update_xaxes(tickangle=35)
-    fig_player_total.update_layout(hovermode="x unified", legend=dict(yanchor="top", y=1, x=0), paper_bgcolor='#121212')
+    fig_player_total.update_xaxes(tickangle=35, showspikes=False)
+    fig_player_total.update_yaxes(showspikes=False)
+    fig_player_total.update_layout(hovermode="x unified", legend=dict(yanchor="top", y=1, x=0),)
     return fig_player_total
 
+def get_fig_playaer_stats(df, col, col_name, week="1"):
+    df.fantasy_points_ppr = df.apply(lambda x:round(x.fantasy_points_ppr, 2), axis=1)
+    labels = {"player_name" :"Player Name", "team_x":"Team", "fantasy_points_ppr":"Fantasy Points"}
+    labels[col] = col_name
+    fig_player_stats = px.bar(df.groupby('player').last().sort_values(by=col, ascending=False).head(20), 
+                                x="player_name", y=col, color="fantasy_points_ppr", text="team_y", 
+                                color_continuous_scale=px.colors.sequential.Teal,
+                                labels=labels, title=f"Top 20 players with highest {col_name} so far in this season.")
+    fig_player_stats.update_xaxes(tickangle=35, showspikes=False)
+    fig_player_stats.update_layout(hovermode="x unified")
+    return fig_player_stats
 # def getplayer_data():
     

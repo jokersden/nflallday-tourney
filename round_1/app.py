@@ -1,21 +1,19 @@
 import math
 import os
 
-from datetime import datetime
 import pandas as pd
-import numpy as np
 import streamlit as st
 
 from shroomdk import ShroomDK
 import nfl_data_py as nfl
 
-import plotly.express as px
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 import plotly.io as pio
 
 from play_type import get_fig_moment_playtype
-from player import get_fig_player_total
+from play_player import get_fig_play_playtype, get_fig_player_percentage
+from player import get_fig_player_total, get_fig_playaer_stats
+from myutils import get_chart_markdown
+from play_player import get_fig_platype_percentage
 from videos import get_top_videos
 
 from week_data import meta_data
@@ -52,10 +50,17 @@ hide_st_style = """
 st.success("Please Note: All the dates and time are in US/New York time.", icon="⏰")
 
 
-@st.cache(allow_output_mutation=True, ttl=30 * 60, show_spinner=False)
+@st.cache(
+    allow_output_mutation=True,
+    ttl=30 * 180,
+    show_spinner=False,
+    suppress_st_warning=True,
+)
 def load_data(data):
 
-    with st.spinner(f"Hey Hey!! {data['msg']}"):
+    with st.spinner(
+        f"Hey Hey!! {data['msg']} (ShroomDK may take a few minutes to load data...)"
+    ):
         page_count = pd.DataFrame(
             sdk.query(
                 f"""
@@ -73,9 +78,7 @@ def load_data(data):
             ).records
         ).pages.values[0]
 
-        for i in range(math.ceil(page_count / 100_000)):
-            query_results = sdk.query(
-                f"""
+        sql = f"""
     select 
         date_trunc(hour, convert_timezone('UTC', 'America/New_York', block_timestamp::timestamp_ntz)) as hour,
         nflallday_id, 
@@ -108,14 +111,25 @@ def load_data(data):
         and hour::date <= '{data["end_date"].strftime("%Y-%m-%d")}' 
         and TX_SUCCEEDED='TRUE' 
     order by block_timestamp
-    """,
-                page_number=i + 1,
-            ).records
+    """
 
-            if i == 0:
-                df_all = pd.DataFrame(query_results)
-            else:
-                df_all = pd.concat([df_all, pd.DataFrame(query_results)])
+        if page_count <= 100_000:
+            df_all = pd.DataFrame(
+                sdk.query(
+                    sql,
+                ).records
+            )
+        else:
+            for i in range(math.ceil(page_count / 100_000)):
+                query_results = sdk.query(
+                    sql,
+                    page_number=i + 1,
+                ).records
+
+                if i == 0:
+                    df_all = pd.DataFrame(query_results)
+                else:
+                    df_all = pd.concat([df_all, pd.DataFrame(query_results)])
 
     return pd.merge(
         df_all,
@@ -158,10 +172,94 @@ else:
         )
     st.markdown("---")
     ch1, ch2 = st.columns(2)
-    ch1.plotly_chart(get_fig_moment_playtype(df_allday, week), use_container_width=True)
-    ch2.plotly_chart(
-        get_fig_player_total(df_allday, week),
-        use_container_width=True,
+    with ch1:
+        st.plotly_chart(
+            get_fig_moment_playtype(df_allday, week), use_container_width=True
+        )
+        get_chart_markdown(
+            "Above chart shows what play type moments were sold, how many sales happened for each play type, and how much in dollar terms they cost. The color represents the average price per moment in each play type."
+            + "</br>         </br>"
+        )
+    with ch2:
+        st.plotly_chart(
+            get_fig_player_total(df_allday, week),
+            use_container_width=True,
+        )
+        get_chart_markdown(
+            "This shows what players were the top 20 in terms of the volume of sales, and how many sales happened for each player in this top 20, and how much in dollar terms they cost. The color represents the average price per moment per player."
+        )
+
+    st.markdown("---")
+
+    pch1, pch2 = st.columns(2)
+    df_pt_pl = (
+        df_allday.groupby(["play_type", "player"])
+        .agg(
+            total=("price", "sum"),
+            avg_price=("price", "mean"),
+            sales=("sales", "count"),
+        )
+        .reset_index()
+        .sort_values(by="total", ascending=False)
     )
+    df_pt_sum = df_pt_pl.groupby("play_type").sum().reset_index()
+    df_pl_sum = df_pt_pl.groupby("player").sum().reset_index()
+
+    df_pt_pl["pt_perc"] = df_pt_pl.apply(
+        lambda x: (
+            x.total * 100 / df_pt_sum[df_pt_sum.play_type == x.play_type]["total"].sum()
+        ),
+        axis=1,
+    )
+    df_pt_pl["pl_perc"] = df_pt_pl.apply(
+        lambda x: (
+            x.total * 100 / df_pl_sum[df_pl_sum.player == x.player]["total"].sum()
+        ),
+        axis=1,
+    )
+    with pch1:
+        st.plotly_chart(get_fig_platype_percentage(df_pt_pl), use_container_width=True)
+        get_chart_markdown(
+            "This shows in terms of sales volume what percentage each player sold in different play types. Are the certain players mostly favorited in certain play types?"
+            + "</br>         </br>"
+        )
+    with pch2:
+        st.plotly_chart(
+            get_fig_play_playtype(df_allday, week), use_container_width=True
+        )
+        get_chart_markdown(
+            "Different play types have different amounts of sold items and different players may have involved with different play types, This shows how distributed the moment prices are, also among different tiers in each play type."
+        )
+
+    st.plotly_chart(get_fig_player_percentage(df_pt_pl), use_container_width=True)
+    get_chart_markdown(
+        "How to read the above chart:  This shows which player and what percentage they of that particular play type were theirs"
+        + ", in other words who are the players that stand outs in different play types based on their sales volume of All Day moments."
+    )
+
+    st.write("")
+
+    stat = st.selectbox(
+        "Pick one that you want to see the top players for: ",
+        [
+            "Rushing Yards",
+            "Passing Yards",
+            "Completions",
+            "Attempts",
+            "Receiving Yards",
+        ],
+    )
+    stat_names = {
+        "Rushing Yards": "rushing_yards",
+        "Passing Yards": "passing_yards",
+        "Completions": "completions",
+        "Attempts": "attempts",
+        "Receiving Yards": "receiving_yards",
+    }
     for i, im in enumerate(st.columns(5)):
         im.image(list(df_allday.headshot_url.unique())[i])
+
+    st.plotly_chart(
+        get_fig_playaer_stats(df_allday, stat_names[stat], stat, week),
+        use_container_width=True,
+    )

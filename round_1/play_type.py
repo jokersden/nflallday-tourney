@@ -48,10 +48,10 @@ def get_fig_moment_playtype(df, week):
             hovertemplate="<br>Number of sales: %{meta} </br><extra></extra>",
         )
     )
-    fig_moment_playtype.update_xaxes(tickangle=35)
+    fig_moment_playtype.update_xaxes(tickangle=35, showspikes=False)
+    fig_moment_playtype.update_yaxes(showspikes=False)
     fig_moment_playtype.update_layout(
         hovermode="x unified",
         legend=dict(yanchor="top", y=1, x=0),
-        paper_bgcolor="#121212",
     )
     return fig_moment_playtype
