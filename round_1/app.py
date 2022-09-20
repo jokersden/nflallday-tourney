@@ -61,22 +61,22 @@ def load_data(data):
     with st.spinner(
         f"Hey Hey!! {data['msg']} (ShroomDK may take a few minutes to load data...)"
     ):
-        page_count = pd.DataFrame(
-            sdk.query(
-                f"""
-    select 
-        count(*) as pages
-    from flow.core.ez_nft_sales s
-        inner join flow.core.dim_allday_metadata m 
-            on m.nft_collection=s.nft_collection 
-            and m.nft_id=s.nft_id
-    where 
-        date_trunc(hour, convert_timezone('UTC', 'America/New_York', block_timestamp::timestamp_ntz))::date >= '{data["start_date"].strftime("%Y-%m-%d")}'
-        and date_trunc(hour, convert_timezone('UTC', 'America/New_York', block_timestamp::timestamp_ntz))::date <= '{data["end_date"].strftime("%Y-%m-%d")}' 
-        and TX_SUCCEEDED='TRUE'
-    """,
-            ).records
-        ).pages.values[0]
+        #     page_count = pd.DataFrame(
+        #         sdk.query(
+        #             f"""
+        # select
+        #     count(*) as pages
+        # from flow.core.ez_nft_sales s
+        #     inner join flow.core.dim_allday_metadata m
+        #         on m.nft_collection=s.nft_collection
+        #         and m.nft_id=s.nft_id
+        # where
+        #     date_trunc(hour, convert_timezone('UTC', 'America/New_York', block_timestamp::timestamp_ntz))::date >= '{data["start_date"].strftime("%Y-%m-%d")}'
+        #     and date_trunc(hour, convert_timezone('UTC', 'America/New_York', block_timestamp::timestamp_ntz))::date <= '{data["end_date"].strftime("%Y-%m-%d")}'
+        #     and TX_SUCCEEDED='TRUE'
+        # """,
+        #         ).records
+        #     ).pages.values[0]
 
         sql = f"""
     select 
@@ -113,23 +113,25 @@ def load_data(data):
     order by block_timestamp
     """
 
-        if page_count <= 100_000:
-            df_all = pd.DataFrame(
-                sdk.query(
-                    sql,
-                ).records
+        # if page_count <= 100_000:
+        #     df_all = pd.DataFrame(
+        #         sdk.query(
+        #             sql,
+        #         ).records
+        #     )
+        # else:
+        for i in range(9):  # (math.ceil(page_count / 100_000)):
+            query_results = sdk.query(
+                sql,
+                page_number=i + 1,
             )
-        else:
-            for i in range(math.ceil(page_count / 100_000)):
-                query_results = sdk.query(
-                    sql,
-                    page_number=i + 1,
-                ).records
+            if query_results.run_stats.record_count == 0:
+                break
 
-                if i == 0:
-                    df_all = pd.DataFrame(query_results)
-                else:
-                    df_all = pd.concat([df_all, pd.DataFrame(query_results)])
+            if i == 0:
+                df_all = pd.DataFrame(query_results.records)
+            else:
+                df_all = pd.concat([df_all, pd.DataFrame(query_results.records)])
     if len(df_all) == 0:
         return df_all
     return pd.merge(
