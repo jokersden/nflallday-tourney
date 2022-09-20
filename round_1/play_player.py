@@ -33,7 +33,7 @@ def get_fig_player_percentage(df, week="1"):
         y="pt_perc",
         color="player",
         text="player",
-        title="this is the title",
+        title="What percentages of play types were sold for each player",
         labels=dict(
             play_type="Play Type", pt_perc="Percentage (%)", player="Player Name"
         ),
@@ -49,7 +49,7 @@ def get_fig_platype_percentage(df, wek="1"):
         x="player",
         y="pl_perc",
         color="play_type",
-        title="this is the title",
+        title="What player moments were popular in different play types.",
         labels=dict(
             play_type="Play Type", pl_perc="Percentage (%)", player="Player Name"
         ),

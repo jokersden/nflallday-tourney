@@ -120,7 +120,7 @@ def load_data(data):
         #         ).records
         #     )
         # else:
-        for i in range(9):  # (math.ceil(page_count / 100_000)):
+        for i in range(10):  # (math.ceil(page_count / 100_000)):
             query_results = sdk.query(
                 sql,
                 page_number=i + 1,
@@ -175,21 +175,23 @@ else:
         )
     st.markdown("---")
     ch1, ch2 = st.columns(2)
+
     with ch1:
-        st.plotly_chart(
-            get_fig_moment_playtype(df_allday, week), use_container_width=True
-        )
-        get_chart_markdown(
-            "Above chart shows what play type moments were sold, how many sales happened for each play type, and how much in dollar terms they cost. The color represents the average price per moment in each play type."
-            + "</br>         </br>"
-        )
-    with ch2:
         st.plotly_chart(
             get_fig_player_total(df_allday, week),
             use_container_width=True,
         )
         get_chart_markdown(
             "This shows what players were the top 20 in terms of the volume of sales, and how many sales happened for each player in this top 20, and how much in dollar terms they cost. The color represents the average price per moment per player."
+        )
+
+    with ch2:
+        st.plotly_chart(
+            get_fig_moment_playtype(df_allday, week), use_container_width=True
+        )
+        get_chart_markdown(
+            "Above chart shows what play type moments were sold, how many sales happened for each play type, and how much in dollar terms they cost. The color represents the average price per moment in each play type."
+            + "</br>         </br>"
         )
 
     st.markdown("---")
@@ -236,8 +238,8 @@ else:
 
     st.plotly_chart(get_fig_player_percentage(df_pt_pl), use_container_width=True)
     get_chart_markdown(
-        "How to read the above chart:  This shows which player and what percentage they of that particular play type were theirs"
-        + ", in other words who are the players that stand outs in different play types based on their sales volume of All Day moments."
+        "How to read the above chart:  This shows which player and what percentage of their sales were from that particular play type"
+        + ", in other words who are the players that stands out in different play types based on their sales volume of All Day moments."
     )
 
     st.write("")
@@ -295,3 +297,7 @@ else:
         use_container_width=True,
     )
     st.markdown("---")
+    st.markdown(
+        "<div width=100% style='align: left'><span>Powered By:</span><img src='https://static.wixstatic.com/media/7c96bd_25e85c48fc9a4b3f992a5f82f6b7a4cc~mv2.png/v1/fit/w_2500,h_1330,al_c/7c96bd_25e85c48fc9a4b3f992a5f82f6b7a4cc~mv2.png' width=300px height=150px/></div>",
+        unsafe_allow_html=True,
+    )
