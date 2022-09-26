@@ -33,7 +33,9 @@ hide_st_style = """
 )
 def load_data():
     with st.spinner(f"Steady lads, we're loading data...)"):
-        return pd.read_parquet("data/all_rush.parquet")
+        return pd.read_parquet(
+            "https://github.com/jokersden/resources/blob/main/all_rush.parquet?raw=true"
+        )
 
 
 st.markdown(
