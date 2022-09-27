@@ -5,8 +5,16 @@ import nfl_data_py as nfl
 
 import plotly.io as pio
 
-from myutils import human_format_single, get_chart_markdown
-from rush import get_toprushes, get_rush_formation, get_rush_td_tot, get_rush_td_player
+from myutils import human_format_single, get_chart_markdown, col_metadata
+from rush import (
+    get_toprushes,
+    get_rush_formation,
+    get_rush_td_tot,
+    get_rush_tot_player,
+    get_win_total_box,
+    get_win_avg_box,
+    get_rush_avg_player,
+)
 
 pio.templates.default = "plotly_dark"
 
@@ -44,6 +52,7 @@ st.markdown(
 )
 
 df = load_data()
+st.success("This analysis consider only the NFT sales happened in 2022 season!")
 tab1, tab2, tab3 = st.tabs(["🏃‍♂️ Rush", "b", "c"])
 
 with tab1:
@@ -53,13 +62,113 @@ with tab1:
         vid.video(top5[0][i])
         vid.write(top5[1][i] + "- $" + str(human_format_single(top5[2][i])))
     st.markdown("---")
+    st.subheader(
+        "Does the rush ended up in a TD or a victory in the game, helps moment sales?"
+    )
     r1, r2 = st.columns(2)
-    r1.plotly_chart(get_rush_formation(df), use_container_width=True)
-    r2.plotly_chart(get_rush_td_player(df), use_container_width=True)
-    get_chart_markdown("🏃‍♂️ This is a test")
+    r1.plotly_chart(get_win_total_box(df), use_container_width=True)
+    r2.plotly_chart(get_win_avg_box(df), use_container_width=True)
+    get_chart_markdown(
+        "🏃‍♂️<ul> <li> It's quite obvious that a moment from a winning game would generate higher volume of sales regardless of that rush ended up being a touchdown or not.</li>"
+        + "<li> However, it's suprising to see that 2 of the most expensive moments(videos) were <b>in losing cause</b> and the most expensive one was a <b>non touch down and was in a losing cause too</b></li>"
+        + "<li>however, their volumes were low, the most expensive moment was by Javonte Williams, $1624.50, however only two moments were sold, similarly Amon-Ra st. Brown's moment sold for $1620 but there was only 1 sale.</li>"
+        + "<li>Which shows that although they were the expensive, they were not that popular or fan favorites, Also the non touchdowns in losing causes has a higher variance in price but low amounts in volumes.</li> <li><b>Could that suggest"
+        + " there are certain players who played well but failed to help there teams victory had some great moments which certain die hard fans love?</b>.</li> <li><b>Anyway fans prefer to buy more and more moments which happened during victories.</b></li></ul>"
+    )
+
+    st.markdown("---")
+    st.write("")
+    st.subheader(
+        "How player performance on a particular moment and it's outcome impact the sales of the moments"
+    )
+    col = st.selectbox(
+        "Select a metric from the dropdown below: ",
+        col_metadata.keys(),
+    )
+
+    st.plotly_chart(
+        get_rush_tot_player(df, col_metadata[col]["name"], col),
+        use_container_width=True,
+    )
+    st.plotly_chart(
+        get_rush_avg_player(df, col_metadata[col]["name"], col),
+        use_container_width=True,
+    )
+    get_chart_markdown(
+        """🏃 Victories: <i>(Select the metrics from the drop down to visualize the results)</i><ul><li>Nick Chubb seems to have pretty even volumes of sales in both winning and losing games, but the price of a moment in a winning game is almost <b>40X</b> than in a losing match.</li>
+        <li>There are multiple players with all their best moments in losing matches however, only <b>Joe Mixon</b> has his losing side moments are expensive than the winning side among players having moments sold in both winning and losing, BUT volume wise only 3 of his losing side moments were sold.</li></ul>
+        🏃 Scoring a Touchdown<ul><li>Again Nick Chubb has so many of his moments sold which weren't ended up being a TD. However, the price of non TD moments were very low but number of sales are pretty high. Do people love Chubb? Or has he done amazingly while his team performs poorly?</li>
+        <li>It's clear that higher the average price, lower the sales volume regardless of the outcome of the game or that particular play.</li></ul>
+        🏃 Rushing Yards<ul><li></li></ul>"""
+    )
     st.plotly_chart(get_rush_td_tot(df), use_container_width=True)
     get_chart_markdown("🏃‍♂️ This is a test")
+    st.plotly_chart(get_rush_formation(df), use_container_width=True)
+    get_chart_markdown("🏈 Conclusion:")
 
     st.markdown("---")
     with st.expander("Methodology"):
-        st.write("test")
+        st.write(
+            """In this analysis we looked at how the rushing moments were sold in this 2022 season. Since it's the play that we were interested in I had analysed individual videos (moments). One video can have multiple NFTs in a collection. 
+        Since touchdown status was not available in Flipside, I used nfl_data_py package to query whether the play ended up being a touchdown and the number of yards the player rushed.
+        Following is the query used to get data: 
+            """
+        )
+        st.markdown(
+            """```sql
+            with sales as (
+  select 
+  	nft_collection,
+  	nft_id,
+  	sum(price) as total,
+  	count(tx_id) as sales,
+  	count(buyer) as buyers,
+  	count(seller) as sellers,
+  	avg(price) as avg_price
+  from flow.core.ez_nft_sales
+  where block_timestamp::date >= '2022-9-8'
+  group by nft_collection, nft_id
+)
+select 
+  count(distinct nflallday_id) as distinct_nfts,
+  count(m.nft_id) as nfts,
+  min(moment_tier) as moment_tier,
+  min(player) as player,
+  min(team) as team,
+  min(season) as season,
+  min(week) as week,
+  min(classification) as classification,
+  min(play_type) as play_type,
+  min(moment_date) as moment_date,
+  min(series) as series,
+  min(set_name) as set_name,
+  moment_stats_full:id as video_id, 
+  min(moment_stats_full:metadata:awayTeamName) as awayteam,
+  min(moment_stats_full:metadata:awayTeamScore) as awayteamscore, 
+  min(moment_stats_full:metadata:gameDate) as gamedate,
+  min(moment_stats_full:metadata:gameTime) as gametime,
+  min(moment_stats_full:metadata:gameDistance) as gamedistance,
+  min(moment_stats_full:metadata:gameDown) as gamedown,
+  min(moment_stats_full:metadata:gameQuarter) as gamequarter,
+  min(moment_stats_full:metadata:playerPosition) as playerposition,
+  min(moment_stats_full:metadata:homeTeamName) as hometeamname,
+  min(moment_stats_full:metadata:homeTeamScore) as hometeamscore,
+  min(moment_stats_full:metadata:images) as images,
+  min(moment_stats_full:metadata:description) as description,
+  min(moment_stats_full:metadata:playerID) as player_id,
+  sum(total) as total,
+  sum(sales) as sales,
+  sum(buyers) as buyers,
+  sum(sellers) as sellers,
+  avg(avg_price) as avg_price
+from flow.core.dim_allday_metadata m
+  inner join sales s on m.nft_collection=s.nft_collection and m.nft_id=s.nft_id
+group by video_id
+        """
+        )
+
+with tab2:
+    t1, t2 = st.columns(2)
+
+with tab3:
+    pass
