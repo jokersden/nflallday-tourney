@@ -13,22 +13,37 @@ def get_toprushes(df):
 
 
 def get_rush_formation(df):
-    df = df.groupby(["PLAYER", "offense_formation"]).sum().reset_index()
-    # df = df.sort_values(by=["offense_formation", "PLAYER"])
-    fig = px.bar(
-        df,
-        x="PLAYER",
-        y="TOTAL",
-        color="offense_formation",
-        color_discrete_sequence=px.colors.sequential.Agsunset,
+    # df = df.groupby(["PLAYER", "offense_formation"]).sum().reset_index()
+    # # df = df.sort_values(by=["offense_formation", "PLAYER"])
+    # fig = px.bar(
+    #     df,
+    #     x="PLAYER",
+    #     y="TOTAL",
+    #     color="offense_formation",
+    #     color_discrete_sequence=px.colors.sequential.Agsunset,
+    #     labels=dict(
+    #         offense_formation="Offence Formation",
+    #         PLAYER="Player Name",
+    #         TOTAL="Sales Volume $",
+    #     ),
+    #     title="Player, sales and Offense formation",
+    # )
+    fig = px.parallel_categories(
+        df[["PLAYERPOSITION", "offense_formation", "rush_touchdown_enc", "winning"]],
+        dimensions=[
+            "PLAYERPOSITION",
+            "offense_formation",
+            "rush_touchdown_enc",
+            "winning",
+        ],
         labels=dict(
             offense_formation="Offence Formation",
-            PLAYER="Player Name",
-            TOTAL="Sales Volume $",
+            rush_touchdown_enc="Touchdown?",
+            winning="End result",
+            PLAYERPOSITION="Player Position",
         ),
-        title="Player, sales and Offense formation",
+        title="In terms of RUSH moment counts(not sales volume) how the games were played?",
     )
-    fig.update_xaxes(tickangle=45, showspikes=False)
     fig.update_layout(
         hovermode="x unified",
         legend=dict(yanchor="top", y=1, x=0, orientation="h"),
@@ -40,7 +55,7 @@ def get_rush_tot_player(df, col_name, col):
     df["label"] = col
     fig = px.bar(
         df.groupby(["PLAYER", col_name])
-        .agg({"TOTAL": "sum", "AVG_PRICE": "max", "label": "min"})
+        .agg({"TOTAL": "sum", "AVG_PRICE": "mean", "label": "min"})
         .reset_index(),
         x="PLAYER",
         y="TOTAL",
@@ -51,6 +66,7 @@ def get_rush_tot_player(df, col_name, col):
             PLAYER="Player Name",
             TOTAL="Sales Volume($)",
             winning="",
+            rushing_yards="Rushing Yards",
         ),
         color_discrete_sequence=["mediumseagreen", "palevioletred"],
         title="Rush ended up in a TD has any effect on sales?",
@@ -73,7 +89,7 @@ def get_rush_avg_player(df, col_name, col):
     df["label"] = col
     fig = px.bar(
         df.groupby(["PLAYER", col_name])
-        .agg({"TOTAL": "sum", "AVG_PRICE": "max", "label": "min"})
+        .agg({"TOTAL": "sum", "AVG_PRICE": "mean", "label": "min"})
         .reset_index(),
         x="PLAYER",
         y="AVG_PRICE",
@@ -84,6 +100,7 @@ def get_rush_avg_player(df, col_name, col):
             PLAYER="Player Name",
             AVG_PRICE="Moment Price($)",
             winning="",
+            rushing_yards="Rushing Yards",
         ),
         barmode="group",
         color_discrete_sequence=["mediumseagreen", "palevioletred"],
@@ -107,7 +124,12 @@ def get_rush_td_tot(df):
     col = "rush_touchdown_enc"
     fig = px.scatter(
         df.groupby(["rushing_yards", col])
-        .agg({"AVG_PRICE": "max", "TOTAL": "sum"})
+        .agg(
+            {
+                "AVG_PRICE": "mean",
+                "TOTAL": "sum",
+            }
+        )
         .reset_index(),
         x="rushing_yards",
         y="TOTAL",
@@ -119,20 +141,21 @@ def get_rush_td_tot(df):
             rushing_yards="Rushing Yards",
             TOTAL="Sales Volume($)",
         ),
+        color_discrete_sequence=["palegreen", "orangered"],
         title="Do Rushing Yards and converting to a TD has an effect on price of the moment?",
     )
     fig.update_traces(
         hovertemplate="<br> <b>%{customdata[1]}</b><br><br>"
         + "Rushing Yards: %{x} </br>"
-        + "Was it a TD: %{customdata[2]} </br>"
+        + "Was it a TD: %{customdata[1]} </br>"
+        # + "Results: %{customdata[2]} </br>"
         + "Volume Sold: $%{y:,.2f} </br>"
         + "Moment Price: $%{customdata[0]:,.2f} <extra></extra>"
     )
     fig.update_layout(
         hovermode="x unified",
         legend=dict(yanchor="top", xanchor="right", y=1, x=1, orientation="h"),
-        coloraxis_colorbar={"title": "Rushing Yards"},
-        legend_title="Rushing Yards",
+        # legend_title="Rushing Yards",
     )
     fig.update_xaxes(showspikes=False)
     return fig
@@ -191,4 +214,43 @@ def get_win_avg_box(df):
         legend=dict(yanchor="top", xanchor="right", y=1.1, x=1, orientation="h"),
     )
     fig.update_xaxes(showspikes=False)
+    return fig
+
+
+def get_rush_by_position(df, col):
+    if col == "AVG_PRICE":
+        bmode = "group"
+    else:
+        bmode = "stack"
+    fig = px.bar(
+        df.groupby(["PLAYERPOSITION", "rush_touchdown_enc"])
+        .agg({"TOTAL": "sum", "AVG_PRICE": "mean"})
+        .reset_index(),
+        x="PLAYERPOSITION",
+        y=col,
+        color="rush_touchdown_enc",
+        labels=dict(
+            AVG_PRICE="Moment Price($)",
+            TOTAL="Sales Volume($)",
+            PLAYERPOSITION="Player Position",
+            rush_touchdown_enc="Touchdown",
+        ),
+        custom_data=["rush_touchdown_enc", "TOTAL", "AVG_PRICE"],
+        barmode=bmode,
+        color_discrete_sequence=["sienna", "lightseagreen"],
+    )
+    fig.update_traces(
+        hovertemplate="<br> <b>%{x}</b><br><br>"
+        + "Touchdown status: %{customdata[0]} </br>"
+        + "Volume Sold: $%{customdata[1]:,.2f} </br>"
+        + "Moment Price: $%{customdata[2]:,.2f} <extra></extra>"
+    )
+    fig.update_xaxes(showspikes=False)
+    fig.update_layout(
+        hovermode="x unified",
+        legend=dict(
+            yanchor="top", xanchor="right", y=1.1, x=1, orientation="h", title=""
+        ),
+        # legend_title="",
+    )
     return fig
