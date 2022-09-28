@@ -16,7 +16,7 @@ from rush import (
     get_rush_avg_player,
     get_rush_by_position,
 )
-from all_td import get_all_td_position
+from all_td import get_all_td_position, get_sankey_all
 
 pio.templates.default = "plotly_dark"
 
@@ -34,7 +34,9 @@ hide_st_style = """
             header {visibility: hidden;}
             </style>
             """
-# st.markdown(hide_st_style, unsafe_allow_html=True)
+st.markdown(hide_st_style, unsafe_allow_html=True)
+
+
 @st.cache(
     allow_output_mutation=True,
     ttl=30 * 60,
@@ -133,18 +135,43 @@ get_chart_markdown(
     """
 )
 st.markdown("---")
-st.subheader("What about ALL the TOUCHDOWNs not just rush")
+st.subheader("What about ALL the TOUCHDOWNs not just rush TDs")
 st.plotly_chart(get_all_td_position(df_all), use_container_width=True)
-
+get_chart_markdown(
+    """🏃 <ul>
+    <li>Apart from QB, RB, WR, and TE(?) the other positions have significantly low touchdown moments in terms of sales volume in this season so far.</li>
+    <li>Again the usual suspects, QB, RB, and WR leading the sales charts with higher volume of sales, and there moments sales seems to have evenly distributed among TD and non TD events.</li>
+    <li>When comparig OL with DL we see that both have comparably lower sales volumes, however DL has 48X times higher sales volume and <b>nearly 97% of these amounts were spent on moments that were ended up in no touchdowns</b></li>
+    <li>OL have very limited sales volume and from the little they had 2/3 were in non TD moments.</li>
+    </ul?"""
+)
+st.plotly_chart(get_sankey_all(df_all), use_container_width=True)
+get_chart_markdown(
+    """🏃 <ul>
+    <li>While RB dominated the sales volume in rush moments we can see that WR are the overall winner in terms of number of distinct moments(videos) sold during this season.</li>
+    <li>Reception moments seems to be something fans love, as 38% of these 574 moments were Reception moments</li>
+    <li>WR's receptions which ended up with a TD and contributed to teams victory were among fans most favorite moments, in terms of number of such moments, but comparedto sales volume, losing cause TDs</li>
+    <li>All 40 of the Sack play moments were NON TDs</li>
+    </ul>"""
+)
 st.write("")
-get_chart_markdown("🏈 Conclusion:")
+get_chart_markdown(
+    """🏈 Conclusion: </br>
+    Fans rule the game, even though the players are the once who made all the fun. During 2022 season of NFL, the fans had shown their interest in their favorite players. While touchdowns were pretty important for QB, RB, and WRs moments to be liked by
+    their fans, in general there were more Non TD moments than TD moments being sold during this season. However, resulting in a touchdown shows an increase in volume and specially average price of that moment than non touchdowns. 
+    Specially in rushing moments we saw that some players do had their moments sold regardless of being a non touchdown and also in a losing, probably they were either fan favorites but unfortunately in a poor performing team?. All in all it's quite clear that
+    performances which help their own teams victory make precious moments that fans would love to through their money at.
+    """
+)
 
 st.markdown("---")
 with st.expander("Methodology", True):
     st.markdown(
-        """In this analysis we looked at how the rushing moments were sold in this 2022 season. Since it's the play that we were interested in I had analysed distinct videos (moments) which is the real moment of that play (<b>thus group by video_id not nflallday_id</b>). 
+        """In this analysis first we looked at how the rushing moments were sold in this 2022 season and then analysed the touchdowns by all play types. 
+        Since it's the play that we were interested in I had analysed distinct videos (moments) which is the real moment of that play (<b>thus group by video_id not nflallday_id</b>). 
         Please note that one video can have multiple NFTs in a collection, I considered average price, sales volume for all the NFTs per video. 
-        Since touchdown status was not available in Flipside, I used nfl_data_py package to query whether the play ended up being a touchdown and the number of yards the player rushed. There are 79 distinct moments(videos) being analysed here.
+        Since touchdown status was not available in Flipside, I used nfl_data_py package to query whether the play ended up being a touchdown and the number of yards the player rushed. 
+        There were 79 distinct moments(videos) of rushing moments and then 574 distinct moments were being analysed.
         Following is the query used to get data: 
         """,
         unsafe_allow_html=True,

@@ -1,5 +1,4 @@
 import plotly.express as px
-import plotly.graph_objects as go
 
 
 def get_toprushes(df):
@@ -220,8 +219,10 @@ def get_win_avg_box(df):
 def get_rush_by_position(df, col):
     if col == "AVG_PRICE":
         bmode = "group"
+        title = "Whose moments were most expensive?"
     else:
         bmode = "stack"
+        title = "Which position had more Sales Volume?"
     fig = px.bar(
         df.groupby(["PLAYERPOSITION", "rush_touchdown_enc"])
         .agg({"TOTAL": "sum", "AVG_PRICE": "mean"})
@@ -238,6 +239,7 @@ def get_rush_by_position(df, col):
         custom_data=["rush_touchdown_enc", "TOTAL", "AVG_PRICE"],
         barmode=bmode,
         color_discrete_sequence=["sienna", "lightseagreen"],
+        title=title,
     )
     fig.update_traces(
         hovertemplate="<br> <b>%{x}</b><br><br>"
