@@ -1,12 +1,14 @@
 import streamlit as st
 
-col_metadata = {
-    # "Sales Volume": {"name": "TOTAL"},
-    # "NFT Price": {"name": "AVG_PRICE"},
-    "Winning": {"name": "winning"},
-    "Touchdown": {"name": "rush_touchdown_enc"},
-    "Rushing Yards": {"name": "rushing_yards"},
-}
+
+def get_col_metadata():
+    return {
+        # "Sales Volume": {"name": "TOTAL"},
+        # "NFT Price": {"name": "AVG_PRICE"},
+        "Winning": {"name": "winning"},
+        "Touchdown": {"name": "rush_touchdown_enc"},
+        "Rushing Yards": {"name": "rushing_yards"},
+    }
 
 
 def human_format_single(num):

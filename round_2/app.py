@@ -5,7 +5,7 @@ import nfl_data_py as nfl
 
 import plotly.io as pio
 
-from myutils import human_format_single, get_chart_markdown, col_metadata
+from myutils import human_format_single, get_chart_markdown, get_col_metadata
 from rush import (
     get_toprushes,
     get_rush_formation,
@@ -60,6 +60,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+col_metadata = get_col_metadata()
 df, df_all = load_data()
 st.success("This analysis consider only the NFT sales happened in 2022 season!.")
 # tab1, tab2, tab3 = st.tabs(["🏃‍♂️ Rush", "b", "c"])
