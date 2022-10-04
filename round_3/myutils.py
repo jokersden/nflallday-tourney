@@ -20,6 +20,6 @@ def get_weekly_desc_markdown(data, comp):
     for e in data:
         html += "<li>" + e + "</li>"
     return comp.markdown(
-        f"<div style='height: 60vh; display: flex; border: 1px solid #8d99ae; padding: 15px; margin: 15px 0px 0px 0px;'><ul style='height: 100%; color:#82b9ae;'>{html}</ul></div>",
+        f"<div style='height: 60vh; display: flex; flex-direction: column; border: 1px solid #8d99ae; padding: 15px; margin: 15px 0px 0px 0px;'><span>Challenges in this week:</span><ul style='height: 100%; color:#82b9ae;'>{html}</ul></div>",
         unsafe_allow_html=True,
     )
